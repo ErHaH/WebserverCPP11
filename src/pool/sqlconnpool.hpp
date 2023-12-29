@@ -6,6 +6,7 @@
 #include <mutex>
 #include <assert.h>
 #include <semaphore.h>
+#include <iostream>
 
 //Mysql连接类
 class SqlConnPool final {
@@ -13,7 +14,7 @@ public:
     //初始化连接池
     void InitSqlPool(const char* host, unsigned port, 
                      const char* user, const char* passwd, 
-                     const char* dbname, unsigned maxcount);
+                     const char* dbname, int maxcount);
     //返回单例对象
     static SqlConnPool* GetInstance();
     //创建连接
@@ -34,8 +35,8 @@ private:
     //单例对象
     static SqlConnPool* sqlConnPool_;
     //连接池大小
-    unsigned maxSqlCount_;
-    unsigned useSqlCount_;
+    int maxSqlCount_;
+    int useSqlCount_;
     //池队列
     std::queue<MYSQL*> connQueue_;
     //单例模式使用互斥锁
@@ -43,27 +44,28 @@ private:
     //信号量，防止池空时遗漏请求
     //sem_t sem_;
 };
-SqlConnPool* SqlConnPool::sqlConnPool_ = nullptr;
+SqlConnPool* SqlConnPool::sqlConnPool_ = new SqlConnPool;
 
 
 void SqlConnPool::InitSqlPool(const char* host, unsigned port, 
                               const char* user, const char* passwd, 
-                              const char* dbname, unsigned maxcount) {
+                              const char* dbname, int maxcount) {
     assert(maxcount > 0);
-    for(int i = 0; i < maxcount; ++i) {    
+    for(int i = 0; i < maxcount; ++i) {
         MYSQL* sql = nullptr;
         //api内部构建对象在堆区返回句柄
         sql = mysql_init(sql);
         assert(sql);
         //用句柄连接，失败返回空
         sql = mysql_real_connect(sql, host, user, passwd, dbname, port, nullptr, 0);
-        assert(sql);    
+        assert(sql != NULL);
         connQueue_.push(sql);
     }
     maxSqlCount_ = maxcount;
 }
 
 SqlConnPool* SqlConnPool::GetInstance() {
+    //SqlConnPool* sqlConnPool_ = new SqlConnPool;
     return sqlConnPool_;
 }
 
