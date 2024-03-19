@@ -6,7 +6,6 @@
 #include <mutex>
 #include <assert.h>
 #include <semaphore.h>
-#include <iostream>
 
 //Mysql连接类
 class SqlConnPool final {
@@ -96,7 +95,7 @@ void SqlConnPool::CloseSqlConn() {
     if(!connQueue_.empty()) {
         auto sql = connQueue_.front();
         connQueue_.pop();
-        //调用mysqlAPI释放连接实例      
+        //调用mysqlAPI释放连接实例
         mysql_close(sql);  
     }
     mysql_library_end();
