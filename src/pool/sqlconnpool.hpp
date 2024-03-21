@@ -2,11 +2,12 @@
 #define SQLCONNPOOL_H
 
 #include <mysql/mysql.h>
+#include <string>
 #include <queue>
 #include <mutex>
-#include <assert.h>
 #include <semaphore.h>
-#include <iostream>
+#include <thread>
+#include <cassert>
 
 //Mysql连接类
 class SqlConnPool final {
@@ -32,8 +33,6 @@ private:
     SqlConnPool(const SqlConnPool&) = default;
     ~SqlConnPool();    
 
-    //单例对象
-    static SqlConnPool* sqlConnPool_;
     //连接池大小
     int maxSqlCount_;
     int useSqlCount_;
@@ -44,7 +43,6 @@ private:
     //信号量，防止池空时遗漏请求
     //sem_t sem_;
 };
-SqlConnPool* SqlConnPool::sqlConnPool_ = new SqlConnPool;
 
 
 void SqlConnPool::InitSqlPool(const char* host, unsigned port, 
@@ -65,8 +63,8 @@ void SqlConnPool::InitSqlPool(const char* host, unsigned port,
 }
 
 SqlConnPool* SqlConnPool::GetInstance() {
-    //SqlConnPool* sqlConnPool_ = new SqlConnPool;
-    return sqlConnPool_;
+    static SqlConnPool sqlConnPool;
+    return &sqlConnPool;
 }
 
 MYSQL* SqlConnPool::GetSqlConn() {
@@ -96,7 +94,7 @@ void SqlConnPool::CloseSqlConn() {
     if(!connQueue_.empty()) {
         auto sql = connQueue_.front();
         connQueue_.pop();
-        //调用mysqlAPI释放连接实例      
+        //调用mysqlAPI释放连接实例
         mysql_close(sql);  
     }
     mysql_library_end();
