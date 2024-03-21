@@ -316,7 +316,7 @@ void WebServer::OnWrite_(HttpConn *client) {
     int err = 0;
     int ret = client->Write(&err);
     if (client->ToWriteBytes() == 0) {
-printf("%s: %d--%d\n", __FILE__ , __LINE__, client->IsKeepAlive());
+//printf("%s: %d--%d\n", __FILE__ , __LINE__, client->IsKeepAlive());
         if(client->IsKeepAlive()) {
             OnProcess(client);
             return;

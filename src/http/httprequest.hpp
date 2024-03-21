@@ -109,7 +109,7 @@ bool HttpRequest::ParseRequest(Buffer& buf) {
     while(buf.ReadableBytes() > 0 && state_ != REQUEST_FINISH) {
         const char* lineEnd = std::search(buf.Peek(), buf.BeginWriteConst(), CRLF, CRLF + 2);
         std::string line(buf.Peek(), lineEnd);
-printf("%s: %d--%s\n", __FILE__ , __LINE__, line.c_str());
+//printf("%s: %d--%s\n", __FILE__ , __LINE__, line.c_str());
         switch (state_)
         {
         case REQUEST_LINE:
@@ -235,10 +235,11 @@ void HttpRequest::ParseFromUrlencoded_() {
     }
     //处理最后一个键值表单字段
     assert(leftPos <= rightPos);
-    if(post_.find(key) != post_.end() && leftPos < rightPos) {
+    if(post_.find(key) == post_.end() && leftPos <= rightPos) {
         value = body_.substr(leftPos, rightPos - leftPos);
         post_[key] = value;
     }
+printf("%s---%s---%s\n", body_.c_str() , key.c_str(), post_[key].c_str());
 }
 
 int HttpRequest::ConverHex(char ch) {
