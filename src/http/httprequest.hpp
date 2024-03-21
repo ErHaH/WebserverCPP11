@@ -6,6 +6,8 @@
 #include <unordered_set>
 #include <algorithm>
 #include <regex>
+#include <errno.h>     
+#include <mysql/mysql.h>  //mysql
 
 #include "../buffer/buffer.hpp"
 #include "../pool/sqlconnpool.hpp"
@@ -36,6 +38,7 @@ public:
 
     HttpRequest();
     ~HttpRequest();
+    void Init();
     bool ParseRequest(Buffer& buf);
     bool IsKeepAlive() const;
 
@@ -75,14 +78,20 @@ const std::unordered_map<std::string, int> HttpRequest::DEFAULT_HTML_TAG_ {
 };
 
 HttpRequest::HttpRequest() {
-    method_ = "";
-    path_ = "";
-    version_ = "";
-    header_.clear();
-    post_.clear();
+    Init();
 }
 
 HttpRequest::~HttpRequest() {
+}
+
+void HttpRequest::Init() {
+    method_ = "";
+    path_ = "";
+    version_ = "";
+    body_ = "";
+    state_ = REQUEST_LINE;
+    header_.clear();
+    post_.clear();    
 }
 
 bool HttpRequest::IsKeepAlive() const {
@@ -100,6 +109,7 @@ bool HttpRequest::ParseRequest(Buffer& buf) {
     while(buf.ReadableBytes() > 0 && state_ != REQUEST_FINISH) {
         const char* lineEnd = std::search(buf.Peek(), buf.BeginWriteConst(), CRLF, CRLF + 2);
         std::string line(buf.Peek(), lineEnd);
+printf("%s: %d--%s\n", __FILE__ , __LINE__, line.c_str());
         switch (state_)
         {
         case REQUEST_LINE:
@@ -121,7 +131,6 @@ bool HttpRequest::ParseRequest(Buffer& buf) {
             break;
         }
         if (lineEnd == buf.BeginWrite()) {
-            state_ = REQUEST_FINISH;
             break;
         }
         buf.RetrieveUntil(lineEnd + 2);
@@ -157,7 +166,7 @@ void HttpRequest::ParsePath_() {
 }
 
 void HttpRequest::ParseRequestHeader_(const std::string &line) {
-    std::regex patten("^([^:]+): ?(.*)$");
+    std::regex patten("^([^:]*): ?(.*)$");
     std::smatch regResult;
     if (std::regex_match(line, regResult, patten)) {
         header_[regResult[1]] = regResult[2];

@@ -2,8 +2,10 @@
 #define HTTPRESPONSE_H
 
 #include <unordered_map>
-#include <sys/stat.h>
-#include <sys/mman.h>
+#include <fcntl.h>       // open
+#include <unistd.h>      // close
+#include <sys/stat.h>    // stat
+#include <sys/mman.h>    // mmap, munmap
 
 #include "../buffer/buffer.hpp"
 
@@ -202,7 +204,7 @@ void HttpResponse::ErrorContent(Buffer &buff, std::string msg) {
     }
     body += std::to_string(code_) + " : " + status  + "\n";
     body += "<p>" + msg + "</p>";
-    body += "<hr><em>TinyWebServer</em></body></html>";
+    body += "<hr><em>TestServer</em></body></html>";
 
     buff.Append("Content-length: " + std::to_string(body.size()) + "\r\n\r\n");
     buff.Append(body);

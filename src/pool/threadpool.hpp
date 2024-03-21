@@ -47,7 +47,7 @@ ThreadPool::ThreadPool(int threadNum) : pool_(std::make_shared<Pool>()) {
             std::unique_lock<std::mutex> locker(pool->mtx);
             while(true) {
                 if(!pool->tasks.empty()) {
-                    auto task = pool->tasks.front();
+                    auto task = std::move(pool->tasks.front());
                     pool->tasks.pop();
                     locker.unlock();
                     task();
