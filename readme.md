@@ -3,10 +3,11 @@
     线程池--√
     连接池--√
         连接池RAII--√
-    HTTP连接类--
+    HTTP连接类--√
     请求类--√
-    响应类--
+    响应类--√
     BUF类--√
+    log类--
 
 
 知识点
@@ -20,9 +21,14 @@
     8、响应头是由空行结束的
 
 
-debug：
+bug：
 （1）debug ParseRequest方法没有走下去，只响应部分请求
     即while语句不成立（两个条件ReadableBytes和status）
     ReadableBytes不可能不满足，上一层调用中同样debug过ParseRequest返回一直是true
     定位问题点是status
     发现status初始化没有重置导致处理状态一直停留在finish  void HttpRequest::Init()
+    修复
+
+（2）debug UserVerify_方法传参为空，没有存储表单密码
+    沿着表单密码变化点找到ParseFromUrlencoded_方法最后处理一个字段时判断条件设置错误
+    修复
