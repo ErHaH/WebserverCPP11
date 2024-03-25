@@ -1,68 +1,6 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
-// #include <vector>
-// #include <iostream>
-
-// class Buffer {
-// public:
-//     //构造
-//     Buffer(int initBufferSize = 1024);
-//     //默认析构
-//     ~Buffer() = default;
-
-//     //获取可读字节
-//     size_t ReadableBytes() const;
-//     //获取可写字节
-//     size_t WriteableBytes() const;
-//     //获取读位置
-//     size_t GetReadPos() const;
-//     //获取写位置
-//     size_t GetWritePos() const;
-//     //获取向量头指针
-//     char* GetBufferBeginPtr() const;
-//     //获取向量尾指针
-//     char* GetBufferEndPtr() const;
-
-//     //确认是否可读
-//     void EnsureReadable(size_t len);
-//     //确认是否可写
-//     void EnsureWriteable(size_t len);
-
-//     //追加数据
-//     void Append(const char *str, size_t len);
-//     void Append(const std::string &str);
-//     void Append(const Buffer &buff);
-//     void Append(const void *data, size_t len);
-
-//     //读取后位置移动
-//     void HasRead(size_t len);
-//     //写入后位置移动
-//     void HasWrite(size_t len);
-
-//     //重新检索
-//     void RetrieveAll();
-//     //重新检索且读取缓冲区数据
-//     void RetrieveAllToStr();
-
-// private:
-//     //扩容
-//     void BufferResize(size_t len);
-
-
-//     //封装动态字符向量
-//     std::vector<char> buffer_;
-//     //读位置
-//     size_t readPos_;
-//     //写位置
-//     size_t writePos_;
-// };
-
-
-// Buffer::Buffer(int initBufferSize = 1024) : buffer_(initBufferSize), readPos_(0), writePos_(0) {
-
-// }
-
 #include <cstring>   //perror
 #include <iostream>
 #include <unistd.h>  // write
@@ -70,6 +8,7 @@
 #include <vector> //readv
 #include <atomic>
 #include <assert.h>
+
 class Buffer {
 public:
     Buffer(int initBuffSize = 1024);
@@ -235,6 +174,8 @@ void Buffer::MakeSpace_(size_t len) {
     if(WritableBytes() + PrependableBytes() < len) {
         buffer_.resize(writePos_ + len + 1);
     } 
+    //todo
+    //可能存在压缩空间时丢失多出的数据
     else {
         size_t readable = ReadableBytes();
         std::copy(BeginPtr_() + readPos_, BeginPtr_() + writePos_, BeginPtr_());

@@ -8,6 +8,8 @@
 #include <thread>
 #include <assert.h>
 
+#include "../log/logger.hpp"
+
 //线程池最小单元
 struct Pool {
     //关池标志
@@ -42,7 +44,8 @@ private:
 ThreadPool::ThreadPool(int threadNum) : pool_(std::make_shared<Pool>()) {
     assert(threadNum > 0);
     for(int i = 0; i < threadNum; ++i) {
-        std::thread([pool = pool_]() {
+        std::string threadName("thread" + std::to_string(i + 1));
+        auto newThread = std::thread([pool = pool_]() {
             //创建独占锁，构造时自动锁，析构解锁
             std::unique_lock<std::mutex> locker(pool->mtx);
             while(true) {
@@ -60,7 +63,10 @@ ThreadPool::ThreadPool(int threadNum) : pool_(std::make_shared<Pool>()) {
                     pool->cond.wait(locker);
                 }
             }
-        }).detach();
+        });
+        pthread_t nativeId = newThread.native_handle();
+        pthread_setname_np(nativeId, threadName.c_str());
+        newThread.detach();
     }
 }
 

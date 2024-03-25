@@ -239,12 +239,12 @@ void HttpRequest::ParseFromUrlencoded_() {
         value = body_.substr(leftPos, rightPos - leftPos);
         post_[key] = value;
     }
-printf("%s---%s---%s\n", body_.c_str() , key.c_str(), post_[key].c_str());
 }
 
-int HttpRequest::ConverHex(char ch) {
+int HttpRequest::ConverHex(const char ch) {
     if(ch >= 'A' && ch <= 'Z') return ch - 'A' + 10;
     if(ch >= 'a' && ch <= 'z') return ch - 'a' + 10;
+    return ch;
 }
 
 bool HttpRequest::UserVerify_(const std::string &user, const std::string &pw, bool isLogin) {
@@ -254,9 +254,9 @@ bool HttpRequest::UserVerify_(const std::string &user, const std::string &pw, bo
     assert(sql);
 
     bool flag = false;
-    unsigned int fieldsNum = 0;
+    //unsigned int fieldsNum = 0;
+    //MYSQL_FIELD *fields = nullptr;
     char order[256] = { 0 };
-    MYSQL_FIELD *fields = nullptr;
     MYSQL_RES *res = nullptr;
     //todo
     //存在sql注入问题
@@ -271,8 +271,8 @@ bool HttpRequest::UserVerify_(const std::string &user, const std::string &pw, bo
     }
 
     res = mysql_store_result(sql);
-    fieldsNum = mysql_num_fields(res);
-    fields = mysql_fetch_field(res);
+    //fieldsNum = mysql_num_fields(res);
+    //fields = mysql_fetch_field(res);
 
     while (MYSQL_ROW row = mysql_fetch_row(res)) {
         if(isLogin) {
@@ -326,7 +326,7 @@ std::string HttpRequest::GetPost(const std::string& key) const {
 }
 
 std::string HttpRequest::GetPost(const char* key) const {
-    assert(key != "");
+    assert(key != nullptr);
     if(post_.find(key) != post_.end()) {
         return post_.find(key)->second;
     }

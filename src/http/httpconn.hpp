@@ -149,7 +149,9 @@ ssize_t HttpConn::Write(int *saveErrno){
     ssize_t len = -1;
     do {
         //真正将响应报文写出的地方，从iov写到fd中
-        len = writev(fd_, iov_, iovCnt_);        
+        len = writev(fd_, iov_, iovCnt_);      
+        // size_t temp = iov_[1].iov_len;
+        // printf("%ld\n", temp);
         if (len <= 0) {
             *saveErrno = errno;
             break;

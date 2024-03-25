@@ -1,8 +1,9 @@
 CXX = g++
 CFLAGS = -std=c++14 -O2 -Wall -g 
 
-TARGET = server
+TARGET = main
 OBJS = src/pool/*.hpp \
+	   src/log/*.hpp \
        src/http/*.hpp \
        src/buffer/*.hpp \
 	   src/server/*.hpp \
