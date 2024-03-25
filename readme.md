@@ -26,7 +26,7 @@
 （2）新增日志线程信息显示
         string追加int类型数据的方法有to_string以及使用stringstream流接收int
 
-bug：
+BUG:
 （1）debug ParseRequest方法没有走下去，只响应部分请求
     即while语句不成立（两个条件ReadableBytes和status）
     ReadableBytes不可能不满足，上一层调用中同样debug过ParseRequest返回一直是true
@@ -42,6 +42,8 @@ bug：
     1、检查不是异步队列线程问题
     2、gdb堆栈发现在LOG_INFO宏调用完毕出栈的时候才出现段错误
     3、发现原因是空指针，直接原因是初始化函数中判断条件错误没有进入初始化指针逻辑
+    修复
 
 （4）日志格式有误（换行+内容）
     根本问题是字符串处理不当，append日志等级信息的时候将整个string附加进去，包括'\0'结束符，导致buf读取到\0中断后续内容读取
+    修复
