@@ -25,6 +25,8 @@
 （1）视频传输卡顿
 （2）新增日志线程信息显示
         string追加int类型数据的方法有to_string以及使用stringstream流接收int
+（3）新增yaml进行参数配置，减少配置更新带来重新编译
+（4）
 
 BUG:
 （1）debug ParseRequest方法没有走下去，只响应部分请求
