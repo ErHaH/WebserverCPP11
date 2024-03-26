@@ -37,7 +37,7 @@ private:
 };
 
     
-Epoller::Epoller(int maxevent) noexcept : epollEvent_(maxevent), epollFd_(epoll_create(100)) {
+Epoller::Epoller(int maxevent) noexcept : epollFd_(epoll_create(100)), epollEvent_(maxevent){
     assert(epollEvent_.size() > 0 && epollFd_ >= 0);
 }
 
@@ -59,7 +59,6 @@ bool Epoller::AddFd(int fd, uint32_t event) {
     epoll_event tmepevent = { 0 };
     tmepevent.data.fd = fd;
     tmepevent.events = event;
-    //TODO
     //灵活转换函数返回值的bool值
     return 0 == epoll_ctl(epollFd_, EPOLL_CTL_ADD, fd, &tmepevent);
 }

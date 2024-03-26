@@ -1,10 +1,12 @@
-#include <unistd.h>
+#include <yaml-cpp/yaml.h>
+
 #include "server/webserver.hpp"
+#include "cfg/ymlconfig.hpp"
 
 int main() {
-    WebServer server(1316, 3, 60000, false, 
-        3306, "root", "123456", "wxdb",
-        10, 5, false, 1, 1024);
-        
+    YmlConfig ymlConfig;
+    ymlConfig.ymlInit();
+    WebServer server(ymlConfig);
+
     server.StartServer();
 }

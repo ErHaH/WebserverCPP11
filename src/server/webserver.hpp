@@ -15,15 +15,24 @@
 #include "epoller.hpp"
 #include "../pool/sqlconnpool.hpp"
 #include "../pool/sqlconnRAII.hpp"
+#include "../logger/logger.hpp"
+#include "../cfg/ymlconfig.hpp"
 
 class WebServer final {
 public:
-    //有参构造
-    WebServer(
-        int port, int trigMode, int timeOutMs, bool optLinger,
-        int sqlPort, const char *sqlUser, const char *sqlPwd,
-        const char *dbName, int connPoolNum, int threadNum,
-        bool openLog, int logLevel, int logQueSize);
+    /* 端口 ET模式 timeoutMs 优雅退出  */
+    /* Mysql配置 */
+    /* 连接池数量 线程池数量 日志开关 日志等级 日志异步队列容量 */
+    WebServer(int port, int trigMode, int timeOutMs, bool optLinger,
+              int sqlPort, const char *sqlUser, const char *sqlPwd,
+              const char *dbName, int connPoolNum, int threadNum,
+              bool openLog, int logLevel, int logQueSize);
+
+    //委托构造
+    WebServer(YmlConfig& ymlConfig) : WebServer(ymlConfig.serverPort, ymlConfig.trigMode, ymlConfig.timeOutMs, ymlConfig.optLinger,
+                                                ymlConfig.sqlPort, ymlConfig.sqlUser.get()->c_str(), ymlConfig.sqlPwd.get()->c_str(),
+                                                ymlConfig.dbName.get()->c_str(), ymlConfig.connPoolNum, ymlConfig.threadNum,
+                                                ymlConfig.openLog, ymlConfig.logLevel, ymlConfig.logQueSize) {}
     //析构
     ~WebServer();
     //启动服务入口
@@ -92,7 +101,13 @@ WebServer::WebServer(
             int sqlPort, const char *sqlUser, const char *sqlPwd,
             const char *dbName, int connPoolNum, int threadNum,
             bool openLog, int logLevel, int logQueSize) 
-{
+{   
+    if(openLog) {
+        Logger::GetInstance()->Init(logLevel, "./log", ".log", logQueSize);
+        if(isClose_) {LOG_ERROR("========== Server init error!==========");}
+        else {LOG_INFO("========== Server init success!==========");}
+    }
+
     port_ = port;
     timeOutMs_ = timeOutMs;
     openLinger_ = optLinger;
@@ -120,15 +135,23 @@ WebServer::WebServer(
     if (!InitSocket_()) {
         isClose_ = true;
     }
+
+    LOG_INFO("Port: %d, OpenLinger: %s", port_, openLinger_ ? "true" : "false");
+    LOG_INFO("Listen Mode: %s, OpenConn Mode: %s", (listenEvent_ & EPOLLET ? "ET" : "LT"), (listenEvent_ & EPOLLET ? "ET" : "LT"));
+    LOG_INFO("sqlPort: %d, sqlUser: %s, sqlPassword: %s, dbName: %s", sqlPort, sqlUser, sqlPwd, dbName);
+    LOG_INFO("connPoolNum: %d, threadNum: %d", connPoolNum, threadNum);
+    LOG_INFO("LogSys level: %d", logLevel);
 }
 
 WebServer::~WebServer() {
     close(listenFd_);
     isClose_ = true;
-    SqlConnPool::GetInstance()->CloseSqlConn();
+    SqlConnPool::GetInstance()->CloseSqlConnPool();
+    LOG_INFO("========== ~WebServer success!==========");
 }
 
 void WebServer::StartServer() {
+    LOG_INFO("========== Server Start success!==========");
     int timeMS = -1;
     while(!isClose_) {
         int eventCnt = epoller_->WaitEvent(timeMS);
@@ -151,6 +174,7 @@ void WebServer::StartServer() {
                 DealWrite_(&users_[clientFd]);
             }
             else {
+                LOG_ERROR("No such event");
                 continue;
             }
         }
@@ -162,6 +186,7 @@ bool WebServer::InitSocket_() {
     int ret = 0;
     sockaddr_in add;
     if (port_ < 1024 || port_ > 65535) {
+        LOG_ERROR("Port error");
         return false;
     }
     add.sin_family = AF_INET;
@@ -171,29 +196,30 @@ bool WebServer::InitSocket_() {
     //2、socket生成监听lfd
     listenFd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (listenFd_ == -1) {
+        LOG_ERROR("ListenFd error");
         close(listenFd_);
         return false;
     }
 
-    //TODO 
+    //3、setsockopt配置listenFd_属性
     //SO_LINGER 添加等待数据处理结束或超10s后再关闭lfd
     struct linger optLinger = { 0 };
     if (openLinger_) {
         optLinger.l_onoff = 1;
         optLinger.l_linger = 10;
     }
-
-    //3、setsockopt配置listenFd_属性
     ret = setsockopt(listenFd_, SOL_SOCKET, SO_LINGER, &optLinger, sizeof(linger));
     if (ret == -1) {
+        LOG_ERROR("Set SO_LINGER error");
         close(listenFd_);
         return false;
     }      
-    //TODO 
+
     //SO_REUSEADDR 端口复用,防止s端处于time_wait无法重启
     int optval = 1;
     ret = setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, (const void*)&optval, sizeof(int));
     if (ret == -1) {
+        LOG_ERROR("Set SO_REUSEADDR error");
         close(listenFd_);
         return false;
     }      
@@ -201,6 +227,7 @@ bool WebServer::InitSocket_() {
     //4、bind绑定listenFd_信息
     ret = bind(listenFd_, (const sockaddr *)&add, sizeof(add));
     if (ret < 0) {
+        LOG_ERROR("Set Bind error");
         close(listenFd_);
         return false;
     }   
@@ -208,6 +235,7 @@ bool WebServer::InitSocket_() {
     //5、listen开启listenFd_监听
     ret = listen(listenFd_, 5);
     if (ret == -1) {
+        LOG_ERROR("Set Listen error");
         close(listenFd_);
         return false;
     }   
@@ -215,6 +243,7 @@ bool WebServer::InitSocket_() {
     //6、调整监听fd属性
     ret = epoller_->AddFd(listenFd_, listenEvent_ | EPOLLIN);
     if (!ret) {
+        LOG_ERROR("AddFd error");
         close(listenFd_);
         return false;
     }       
@@ -254,9 +283,11 @@ void WebServer::DealListen_() {
         } 
         else if (HttpConn::userCount >= MAX_FD) {
             SendError_(listenFd_, "server busy!");
+            LOG_WARN("Server busy!");
             return;
         }
         AddClient_(clientFd, clientAddr);
+        LOG_INFO("clientFd in: %d", clientFd);
     } while (listenEvent_ & EPOLLET);
 }
 
@@ -286,6 +317,7 @@ void WebServer::DealRead_(HttpConn *client) {
 }
 
 void WebServer::OnRead_(HttpConn *client) {
+    LOG_WARN("OnRead");
     assert(client);
     int err = 0;
     int ret = client->Read(&err);

@@ -1,5 +1,5 @@
-#ifndef SQLCONNRAII_H
-#define SQLCONNRAII_H
+#ifndef SQLCONNRAII_HPP
+#define SQLCONNRAII_HPP
 #include "sqlconnpool.hpp"
 
 /*
