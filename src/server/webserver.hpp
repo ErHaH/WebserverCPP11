@@ -16,15 +16,23 @@
 #include "../pool/sqlconnpool.hpp"
 #include "../pool/sqlconnRAII.hpp"
 #include "../logger/logger.hpp"
+#include "../cfg/ymlconfig.hpp"
 
 class WebServer final {
 public:
-    //有参构造
-    WebServer(
-        int port, int trigMode, int timeOutMs, bool optLinger,
-        int sqlPort, const char *sqlUser, const char *sqlPwd,
-        const char *dbName, int connPoolNum, int threadNum,
-        bool openLog, int logLevel, int logQueSize);
+    /* 端口 ET模式 timeoutMs 优雅退出  */
+    /* Mysql配置 */
+    /* 连接池数量 线程池数量 日志开关 日志等级 日志异步队列容量 */
+    WebServer(int port, int trigMode, int timeOutMs, bool optLinger,
+              int sqlPort, const char *sqlUser, const char *sqlPwd,
+              const char *dbName, int connPoolNum, int threadNum,
+              bool openLog, int logLevel, int logQueSize);
+
+    //委托构造
+    WebServer(YmlConfig& ymlConfig) : WebServer(ymlConfig.serverPort, ymlConfig.trigMode, ymlConfig.timeOutMs, ymlConfig.optLinger,
+                                                ymlConfig.sqlPort, ymlConfig.sqlUser.get()->c_str(), ymlConfig.sqlPwd.get()->c_str(),
+                                                ymlConfig.dbName.get()->c_str(), ymlConfig.connPoolNum, ymlConfig.threadNum,
+                                                ymlConfig.openLog, ymlConfig.logLevel, ymlConfig.logQueSize) {}
     //析构
     ~WebServer();
     //启动服务入口
@@ -93,7 +101,13 @@ WebServer::WebServer(
             int sqlPort, const char *sqlUser, const char *sqlPwd,
             const char *dbName, int connPoolNum, int threadNum,
             bool openLog, int logLevel, int logQueSize) 
-{
+{   
+    if(openLog) {
+        Logger::GetInstance()->Init(logLevel, "./log", ".log", logQueSize);
+        if(isClose_) {LOG_ERROR("========== Server init error!==========");}
+        else {LOG_INFO("========== Server init success!==========");}
+    }
+
     port_ = port;
     timeOutMs_ = timeOutMs;
     openLinger_ = optLinger;
@@ -122,26 +136,17 @@ WebServer::WebServer(
         isClose_ = true;
     }
 
-    if(openLog) {
-        Logger::GetInstance()->Init(logLevel, "./log", ".log", logQueSize);
-        if(isClose_) {
-            LOG_ERROR("========== Server init error!==========");
-        }
-        else {
-            LOG_INFO("========== Server init success!==========");
-            LOG_INFO("Port: %d, OpenLinger: %s", port_, openLinger_ ? "true" : "false");
-            LOG_INFO("Listen Mode: %s, OpenConn Mode: %s", (listenEvent_ & EPOLLET ? "ET" : "LT"), (listenEvent_ & EPOLLET ? "ET" : "LT"));
-            LOG_INFO("sqlPort: %d, sqlUser: %s, sqlPassword: %s, dbName: %s", sqlPort, sqlUser, sqlPwd, dbName);
-            LOG_INFO("connPoolNum: %d, threadNum: %d", connPoolNum, threadNum);
-            LOG_INFO("LogSys level: %d", logLevel);
-        }
-    }
+    LOG_INFO("Port: %d, OpenLinger: %s", port_, openLinger_ ? "true" : "false");
+    LOG_INFO("Listen Mode: %s, OpenConn Mode: %s", (listenEvent_ & EPOLLET ? "ET" : "LT"), (listenEvent_ & EPOLLET ? "ET" : "LT"));
+    LOG_INFO("sqlPort: %d, sqlUser: %s, sqlPassword: %s, dbName: %s", sqlPort, sqlUser, sqlPwd, dbName);
+    LOG_INFO("connPoolNum: %d, threadNum: %d", connPoolNum, threadNum);
+    LOG_INFO("LogSys level: %d", logLevel);
 }
 
 WebServer::~WebServer() {
     close(listenFd_);
     isClose_ = true;
-    SqlConnPool::GetInstance()->CloseSqlConn();
+    SqlConnPool::GetInstance()->CloseSqlConnPool();
     LOG_INFO("========== ~WebServer success!==========");
 }
 

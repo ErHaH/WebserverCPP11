@@ -1,13 +1,12 @@
-#include <unistd.h>
+#include <yaml-cpp/yaml.h>
+
 #include "server/webserver.hpp"
+#include "cfg/ymlconfig.hpp"
 
 int main() {
-    /* 端口 ET模式 timeoutMs 优雅退出  */
-    /* Mysql配置 */
-    /* 连接池数量 线程池数量 日志开关 日志等级 日志异步队列容量 */    
-    WebServer server(1316, 3, 60000, false, 
-        3306, "root", "123456", "wxdb",
-        10, 5, true, 1, 1024);
+    YmlConfig ymlConfig;
+    ymlConfig.ymlInit();
+    WebServer server(ymlConfig);
 
     server.StartServer();
 }

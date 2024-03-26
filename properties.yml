@@ -1,0 +1,16 @@
+server: 
+  port: 1316
+  trigMode: 3
+  timeOutMs: 60000
+  optLinger: true
+  connPoolNum: 10
+  threadNum: 5
+  openLog: true
+  logLevel: 1
+  logQueSize: 1024
+
+mysql: 
+  sqlPort: 3306
+  sqlUser: root
+  sqlPwd: 123456
+  dbName: wxdb

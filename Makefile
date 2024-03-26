@@ -7,13 +7,11 @@ OBJS = src/pool/*.hpp \
        src/http/*.hpp \
        src/buffer/*.hpp \
 	   src/server/*.hpp \
+	   src/cfg/*.hpp\
 	   src/main.cpp
 
 all: $(OBJS)
-	$(CXX) $(CFLAGS) $(OBJS) -o bin/$(TARGET)  -pthread -lmysqlclient
+	$(CXX) $(CFLAGS) $(OBJS) -o bin/$(TARGET)  -pthread -lmysqlclient -lyaml-cpp
 
 clean:
 	rm -rf bin/$(OBJS) $(TARGET)
-
-
-
