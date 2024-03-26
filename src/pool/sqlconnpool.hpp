@@ -1,5 +1,5 @@
-#ifndef SQLCONNPOOL_H
-#define SQLCONNPOOL_H
+#ifndef SQLCONNPOOL_HPP
+#define SQLCONNPOOL_HPP
 
 #include <mysql/mysql.h>
 #include <string>
@@ -8,6 +8,8 @@
 #include <semaphore.h>
 #include <thread>
 #include <cassert>
+
+#include "../logger/logger.hpp"
 
 //Mysql连接类
 class SqlConnPool final {
@@ -25,7 +27,7 @@ public:
     //获取连接池剩余大小
     int GetFreeConnCount();
     //关闭连接池
-    void CloseSqlConn();
+    void CloseSqlConnPool();
 
 private:
     //SQL连接池构造/析构私有化
@@ -35,13 +37,12 @@ private:
 
     //连接池大小
     int maxSqlCount_;
-    int useSqlCount_;
     //池队列
     std::queue<MYSQL*> connQueue_;
     //单例模式使用互斥锁
     std::mutex mtx_;
     //信号量，防止池空时遗漏请求
-    //sem_t sem_;
+    sem_t sem_;
 };
 
 
@@ -60,6 +61,8 @@ void SqlConnPool::InitSqlPool(const char* host, unsigned port,
         connQueue_.push(sql);
     }
     maxSqlCount_ = maxcount;
+    sem_init(&sem_, 0, maxSqlCount_);
+    LOG_INFO("SQLPool init success!");
 }
 
 SqlConnPool* SqlConnPool::GetInstance() {
@@ -68,30 +71,38 @@ SqlConnPool* SqlConnPool::GetInstance() {
 }
 
 MYSQL* SqlConnPool::GetSqlConn() {
-    std::lock_guard<std::mutex> locker(mtx_);
-    if(!connQueue_.empty()) {
-        auto sql = connQueue_.front();
-        connQueue_.pop();
-        useSqlCount_++;
-        return sql;        
+    if(connQueue_.empty()) {
+        LOG_ERROR("SqlConnPool is empty, wait for connect obj");
     }
-    return nullptr;
+    MYSQL* sql = nullptr;
+    sem_wait(&sem_);
+    {
+        std::lock_guard<std::mutex> locker(mtx_);
+        if(!connQueue_.empty()) {
+            sql = connQueue_.front();
+            connQueue_.pop();
+            LOG_INFO("Get a SQL connection object");
+        }
+    }
+    //todo 可能空指针
+    return sql;
 }
 
 void SqlConnPool::FreeSqlConn(MYSQL* sql) {
     assert(sql != nullptr);
     std::lock_guard<std::mutex> locker(mtx_);
     connQueue_.push(sql);
-    useSqlCount_--;
+    sem_post(&sem_);
 }
 
 int SqlConnPool::GetFreeConnCount() {
     std::lock_guard<std::mutex> locker(mtx_);
-    return maxSqlCount_ - useSqlCount_;
+    return connQueue_.size();
 }
 
-void SqlConnPool::CloseSqlConn() {
-    if(!connQueue_.empty()) {
+void SqlConnPool::CloseSqlConnPool() {
+    std::lock_guard<std::mutex> locker(mtx_);
+    while(!connQueue_.empty()) {
         auto sql = connQueue_.front();
         connQueue_.pop();
         //调用mysqlAPI释放连接实例
@@ -101,7 +112,7 @@ void SqlConnPool::CloseSqlConn() {
 }
 
 SqlConnPool::~SqlConnPool() {
-    CloseSqlConn();
+    CloseSqlConnPool();
 }
 
 #endif
